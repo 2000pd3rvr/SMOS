@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SMOS is a multilingual, voice-enabled smart food ordering system for guests and restaurant teams."
+    />
+    <title>SMOS · Smart Food Ordering System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="SMOS home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span><strong>SMOS</strong><small>Smart food ordering</small></span>
+      </a>
+      <nav class="mode-switch" aria-label="Choose interface">
+        <button class="mode-button active" data-view="guest" type="button">
+          <span>Guest</span>
+        </button>
+        <button class="mode-button" data-view="kitchen" type="button">
+          <span>Kitchen &amp; waiters</span>
+          <b id="new-count" class="count-badge hidden">0</b>
+        </button>
+      </nav>
+      <span id="connection" class="connection"><i></i> Live</span>
+    </header>
+
+    <main>
+      <section id="guest-view" class="view active">
+        <div class="guest-layout">
+          <section class="order-panel">
+            <div class="eyebrow">Table-side ordering · No app needed</div>
+            <h1>Say what you’re<br /><em>in the mood for.</em></h1>
+            <p class="lede">
+              Speak or type naturally in your language. SMOS translates your order
+              for the kitchen while keeping your words visible to you.
+            </p>
+
+            <form id="order-form">
+              <div class="compact-fields">
+                <label>
+                  <span>Your name</span>
+                  <input id="customer-name" maxlength="80" placeholder="e.g. Amara" />
+                </label>
+                <label>
+                  <span>Table</span>
+                  <input id="table-number" maxlength="30" placeholder="e.g. 12" required />
+                </label>
+                <label>
+                  <span>I’m speaking</span>
+                  <select id="guest-language" aria-label="Order language"></select>
+                </label>
+              </div>
+
+              <div class="order-composer">
+                <label for="order-text">Describe your order</label>
+                <textarea
+                  id="order-text"
+                  rows="5"
+                  maxlength="1500"
+                  placeholder="I’d like grilled salmon with lemon rice, no dairy…"
+                  required
+                ></textarea>
+                <div class="composer-actions">
+                  <button id="voice-button" class="voice-button" type="button">
+                    <span class="mic" aria-hidden="true"></span>
+                    <span class="voice-label">Tap to speak</span>
+                  </button>
+                  <span id="listening-status" class="listening-status"></span>
+                  <button id="preview-button" class="text-button" type="button">
+                    Visualise dish
+                  </button>
+                </div>
+              </div>
+
+              <div id="translation-card" class="translation-card hidden">
+                <div>
+                  <span>Kitchen translation</span>
+                  <button id="speak-translation" type="button" aria-label="Read translation aloud">◖))</button>
+                </div>
+                <p id="translated-preview"></p>
+              </div>
+
+              <div id="form-message" class="form-message hidden" role="status"></div>
+              <button id="submit-order" class="primary-button" type="submit">
+                <span>Send order to kitchen</span><b>→</b>
+              </button>
+            </form>
+          </section>
+
+          <aside class="visual-panel">
+            <div class="visual-frame">
+              <img id="dish-image" alt="AI-generated preview of the described dish" />
+              <div id="image-placeholder" class="image-placeholder">
+                <div class="plate" aria-hidden="true"><i></i></div>
+                <h2>Your idea, plated.</h2>
+                <p>Describe a dish and SMOS will visualise it here.</p>
+              </div>
+              <div id="image-loading" class="image-loading hidden">
+                <i></i><span>Imagining your dish…</span>
+              </div>
+              <span class="ai-label">AI food visualisation</span>
+            </div>
+            <div class="trust-row">
+              <span>✦ Google-powered translation</span>
+              <span>✦ Live kitchen delivery</span>
+              <span>✦ 30+ languages</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="kitchen-view" class="view">
+        <div class="dashboard">
+          <div class="dashboard-header">
+            <div>
+              <div class="eyebrow">Live service dashboard</div>
+              <h1>Kitchen pass</h1>
+              <p>New guest orders arrive here instantly.</p>
+            </div>
+            <div class="dashboard-controls">
+              <label>
+                <span>Display orders in</span>
+                <select id="kitchen-language"></select>
+              </label>
+              <label class="closed-toggle">
+                <input id="include-closed" type="checkbox" checked />
+                <span>Show completed</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="status-summary" id="status-summary"></div>
+          <div id="orders-grid" class="orders-grid"></div>
+          <div id="empty-orders" class="empty-orders hidden">
+            <span>✓</span>
+            <h2>The pass is clear</h2>
+            <p>New orders will appear here automatically.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>SMOS <b id="version"></b></span>
+      <span>Voice availability depends on browser support. Please confirm allergies with staff.</span>
+    </footer>
+
+    <template id="order-template">
+      <article class="order-card">
+        <div class="order-card-head">
+          <div><span class="order-number"></span><time></time></div>
+          <span class="status-pill"></span>
+        </div>
+        <div class="order-meta">
+          <span class="table-value"></span>
+          <span class="customer-value"></span>
+        </div>
+        <p class="order-copy"></p>
+        <details>
+          <summary>Original guest wording</summary>
+          <p class="original-copy"></p>
+        </details>
+        <div class="order-actions">
+          <button class="speak-order" type="button">◖)) Listen</button>
+          <select class="status-select" aria-label="Update order status">
+            <option value="new">New</option>
+            <option value="accepted">Accepted</option>
+            <option value="preparing">Preparing</option>
+            <option value="ready">Ready</option>
+            <option value="served">Served</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </article>
+    </template>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
