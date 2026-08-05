@@ -15,7 +15,7 @@ SMOS is an AI-assisted ordering layer for restaurants and cafés. Guests can spe
 or type an order in their preferred language, see an AI-generated food visual,
 and send the translated order to a live kitchen/waiter dashboard.
 
-**Current release: v0.1.3**
+**Current release: v0.1.4**
 
 ## Features
 
@@ -27,7 +27,9 @@ and send the translated order to a live kitchen/waiter dashboard.
 - Live order delivery with WebSockets
 - Kitchen/waiter workflow: New → Accepted → Preparing → Ready → Served
 - AI food visualisation while a guest describes a dish
-- Responsive guest and operations interfaces
+- Responsive guest and operations interfaces sharing the Corner Cafe design
+  system: Playfair Display/Manrope typography, crimson and gold accents, and a
+  dark-first theme with a light mode toggle
 - SQLite order persistence
 - Docker deployment for Hugging Face Spaces or any container host
 

@@ -66,7 +66,9 @@ const turkishSafetyTerms = {
 };
 
 const elements = {
-  modeButtons: $$(".mode-button"),
+  modeButtons: $$(".nav [data-view]"),
+  themeToggle: $("[data-theme-toggle]"),
+  themeMeta: $("#meta-theme-color"),
   guestView: $("#guest-view"),
   kitchenView: $("#kitchen-view"),
   guestLanguage: $("#guest-language"),
@@ -148,7 +150,10 @@ function preserveTurkishSafetyTerms(sourceText, translatedText, source, target) 
 
 function correctTurkishRestaurantContext(sourceText, translatedText, source, target) {
   if (source === "tr" && target === "en" && sourceText.toLocaleLowerCase("tr-TR").includes("acısız")) {
-    return translatedText.replace(/\b(?:pain-free|painless)\b/gi, "not spicy");
+    return translatedText.replace(
+      /\b(?:without\s+pain|no\s+pain|pain[\s-]?free|painless)\b/gi,
+      "not spicy",
+    );
   }
   return translatedText;
 }
@@ -194,7 +199,7 @@ function saveLocalOrders(orders) {
 
 async function localApi(path, options = {}) {
   if (path === "/api/config") {
-    return { name: "SMOS", version: "0.1.3", languages: staticLanguages };
+    return { name: "SMOS", version: "0.1.4", languages: staticLanguages };
   }
 
   if (path === "/api/translate") {
@@ -309,12 +314,39 @@ function showMessage(message, type = "success") {
 
 function switchView(view) {
   elements.modeButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.view === view);
+    button.classList.toggle("is-active", button.dataset.view === view);
   });
-  elements.guestView.classList.toggle("active", view === "guest");
-  elements.kitchenView.classList.toggle("active", view === "kitchen");
+  elements.guestView.classList.toggle("is-active", view === "guest");
+  elements.kitchenView.classList.toggle("is-active", view === "kitchen");
   if (view === "kitchen") loadOrders();
   window.history.replaceState(null, "", view === "kitchen" ? "#kitchen" : "#order");
+}
+
+const THEME_KEY = "smos-theme";
+
+function setTheme(theme) {
+  const next = theme === "light" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* Private browsing blocks persistence; the theme still applies for this session. */
+  }
+  elements.themeMeta?.setAttribute("content", next === "light" ? "#f6f3ee" : "#070707");
+  const goLight = next === "dark";
+  elements.themeToggle?.setAttribute(
+    "aria-label",
+    goLight ? "Switch to light theme" : "Switch to dark theme",
+  );
+  elements.themeToggle?.setAttribute("title", goLight ? "Light theme" : "Dark theme");
+}
+
+function setupTheme() {
+  setTheme(document.documentElement.getAttribute("data-theme"));
+  elements.themeToggle?.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme");
+    setTheme(current === "dark" ? "light" : "dark");
+  });
 }
 
 function setupSpeechRecognition() {
@@ -572,6 +604,7 @@ async function initialise() {
   elements.version.textContent = `v${state.config.version}`;
   fillLanguageSelect(elements.guestLanguage, "en");
   fillLanguageSelect(elements.kitchenLanguage, "en");
+  setupTheme();
   setupSpeechRecognition();
   connectSocket();
   await loadOrders();
@@ -604,5 +637,7 @@ async function initialise() {
 }
 
 initialise().catch((error) => {
-  document.body.innerHTML = `<main class="dashboard"><h1>SMOS could not start</h1><p>${error.message}</p></main>`;
+  document.body.innerHTML =
+    `<main class="section"><div class="container"><p class="eyebrow">Startup error</p>` +
+    `<h1>SMOS could not start</h1><p class="section-lede">${error.message}</p></div></main>`;
 });

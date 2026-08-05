@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("SMOS_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "smos.db"
@@ -178,7 +178,7 @@ def correct_turkish_restaurant_context(
     if source == "tr" and target == "en" and "acısız" in source_text.casefold():
         # Generic translators can read "acı" as pain; on a food order it means spice/heat.
         translated_text = re.sub(
-            r"\b(?:pain-free|painless)\b",
+            r"\b(?:without\s+pain|no\s+pain|pain[\s-]?free|painless)\b",
             "not spicy",
             translated_text,
             flags=re.IGNORECASE,
