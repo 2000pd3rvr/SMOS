@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("SMOS_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "smos.db"

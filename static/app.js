@@ -111,7 +111,7 @@ function saveLocalOrders(orders) {
 
 async function localApi(path, options = {}) {
   if (path === "/api/config") {
-    return { name: "SMOS", version: "0.1.1", languages: staticLanguages };
+    return { name: "SMOS", version: "0.1.2", languages: staticLanguages };
   }
 
   if (path === "/api/translate") {
