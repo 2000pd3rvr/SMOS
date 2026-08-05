@@ -13,7 +13,8 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const staticLanguages = [
-  ["en", "English", "en-GB"], ["ar", "العربية · Arabic", "ar-SA"],
+  ["en", "English", "en-GB"], ["tr", "Türkçe · Turkish — optimised", "tr-TR"],
+  ["ar", "العربية · Arabic", "ar-SA"],
   ["bn", "বাংলা · Bengali", "bn-BD"], ["zh-CN", "中文 · Chinese", "zh-CN"],
   ["cs", "Čeština · Czech", "cs-CZ"], ["da", "Dansk · Danish", "da-DK"],
   ["nl", "Nederlands · Dutch", "nl-NL"], ["fi", "Suomi · Finnish", "fi-FI"],
@@ -27,9 +28,42 @@ const staticLanguages = [
   ["ru", "Русский · Russian", "ru-RU"], ["es", "Español · Spanish", "es-ES"],
   ["sw", "Kiswahili · Swahili", "sw-KE"], ["sv", "Svenska · Swedish", "sv-SE"],
   ["ta", "தமிழ் · Tamil", "ta-IN"], ["th", "ไทย · Thai", "th-TH"],
-  ["tr", "Türkçe · Turkish", "tr-TR"], ["uk", "Українська · Ukrainian", "uk-UA"],
+  ["uk", "Українська · Ukrainian", "uk-UA"],
   ["ur", "اردو · Urdu", "ur-PK"], ["vi", "Tiếng Việt · Vietnamese", "vi-VN"],
 ].map(([code, name, locale]) => ({ code, name, locale }));
+
+const turkishSafetyTerms = {
+  "tr-en": {
+    "alerjim var": ["I have an allergy", ["allergy", "allergic"]],
+    "glütensiz": ["gluten-free", ["gluten-free", "without gluten"]],
+    "laktozsuz": ["lactose-free", ["lactose-free", "without lactose"]],
+    "süt ürünü olmasın": ["no dairy", ["no dairy", "dairy-free", "without dairy"]],
+    "fıstık alerjisi": ["peanut allergy", ["peanut allergy", "allergic to peanuts"]],
+    "fıstık alerjim var": ["peanut allergy", ["peanut allergy", "allergic to peanuts"]],
+    "fıstığa alerjim var": ["peanut allergy", ["peanut allergy", "allergic to peanuts"]],
+    "kuruyemiş alerjisi": ["nut allergy", ["nut allergy", "allergic to nuts"]],
+    "kuruyemişe alerjim var": ["nut allergy", ["nut allergy", "allergic to nuts"]],
+    "domuz eti olmasın": ["no pork", ["no pork", "without pork"]],
+    "soğansız": ["no onion", ["no onion", "without onion", "onion-free"]],
+    "sarımsaksız": ["no garlic", ["no garlic", "without garlic", "garlic-free"]],
+    "acısız": ["not spicy", ["not spicy", "non-spicy", "without spice"]],
+  },
+  "en-tr": {
+    "i have an allergy": ["alerjim var", ["alerjim var", "alerjim bulunuyor"]],
+    "gluten-free": ["glütensiz", ["glütensiz", "glutensiz"]],
+    "lactose-free": ["laktozsuz", ["laktozsuz"]],
+    "no dairy": ["süt ürünü olmasın", ["süt ürünü olmasın", "süt ürünsüz"]],
+    "peanut allergy": [
+      "fıstık alerjisi",
+      ["fıstık alerjisi", "fıstığa alerjim var", "yer fıstığına alerjim var"],
+    ],
+    "nut allergy": ["kuruyemiş alerjisi", ["kuruyemiş alerjisi"]],
+    "no pork": ["domuz eti olmasın", ["domuz eti olmasın", "domuz etsiz"]],
+    "no onion": ["soğansız", ["soğansız", "soğan olmasın"]],
+    "no garlic": ["sarımsaksız", ["sarımsaksız", "sarımsak olmasın"]],
+    "not spicy": ["acısız", ["acısız", "acı olmasın", "baharatlı değil"]],
+  },
+};
 
 const elements = {
   modeButtons: $$(".mode-button"),
@@ -88,16 +122,65 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+function preserveTurkishSafetyTerms(sourceText, translatedText, source, target) {
+  const terms = turkishSafetyTerms[`${source}-${target}`] || {};
+  const sourceLower = sourceText.toLocaleLowerCase(source === "tr" ? "tr-TR" : "en-GB");
+  const translatedLower = translatedText.toLocaleLowerCase(target === "tr" ? "tr-TR" : "en-GB");
+  const missing = [];
+  const containsWholePhrase = (value, phrase) => {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}($|[^\\p{L}\\p{N}_])`, "u").test(value);
+  };
+  Object.entries(terms).forEach(([phrase, [canonical, accepted]]) => {
+    if (
+      containsWholePhrase(sourceLower, phrase) &&
+      !accepted.some((term) =>
+        containsWholePhrase(translatedLower, term.toLocaleLowerCase(target === "tr" ? "tr-TR" : "en-GB"))
+      )
+    ) {
+      missing.push(canonical);
+    }
+  });
+  if (!missing.length) return translatedText;
+  const label = target === "en" ? "Order note" : "Sipariş notu";
+  return `${translatedText} — ${label}: ${missing.join(", ")}`;
+}
+
+function correctTurkishRestaurantContext(sourceText, translatedText, source, target) {
+  if (source === "tr" && target === "en" && sourceText.toLocaleLowerCase("tr-TR").includes("acısız")) {
+    return translatedText.replace(/\b(?:pain-free|painless)\b/gi, "not spicy");
+  }
+  return translatedText;
+}
+
 async function browserGoogleTranslate(text, source, target) {
   if (!text.trim() || source === target) return text;
+  const normalised = text.normalize("NFC").replace(/[’`]/g, "'").replace(/\s+/g, " ").trim();
   const url =
     "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t" +
     `&sl=${encodeURIComponent(source || "auto")}&tl=${encodeURIComponent(target)}` +
-    `&q=${encodeURIComponent(text)}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Translation is temporarily unavailable.");
-  const data = await response.json();
-  return data[0].map((part) => part[0]).join("");
+    `&q=${encodeURIComponent(normalised)}`;
+  let translated;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Google translation failed.");
+    const data = await response.json();
+    translated = data[0].map((part) => part[0]).join("");
+  } catch {
+    const memoryUrl =
+      "https://api.mymemory.translated.net/get" +
+      `?q=${encodeURIComponent(normalised)}&langpair=${encodeURIComponent(`${source}|${target}`)}`;
+    const response = await fetch(memoryUrl);
+    if (!response.ok) throw new Error("Translation is temporarily unavailable.");
+    const data = await response.json();
+    translated = data.responseData?.translatedText;
+    if (!translated) throw new Error("Translation is temporarily unavailable.");
+  }
+  if (new Set([source, target]).has("tr") && new Set([source, target]).has("en")) {
+    translated = correctTurkishRestaurantContext(normalised, translated, source, target);
+    return preserveTurkishSafetyTerms(normalised, translated, source, target);
+  }
+  return translated;
 }
 
 function localOrders() {
@@ -111,7 +194,7 @@ function saveLocalOrders(orders) {
 
 async function localApi(path, options = {}) {
   if (path === "/api/config") {
-    return { name: "SMOS", version: "0.1.2", languages: staticLanguages };
+    return { name: "SMOS", version: "0.1.3", languages: staticLanguages };
   }
 
   if (path === "/api/translate") {

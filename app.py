@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sqlite3
+import unicodedata
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -11,19 +13,20 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import quote
 
-from deep_translator import GoogleTranslator
+from deep_translator import GoogleTranslator, MyMemoryTranslator
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("SMOS_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "smos.db"
 
 LANGUAGES = [
     {"code": "en", "name": "English", "locale": "en-GB"},
+    {"code": "tr", "name": "Türkçe · Turkish — optimised", "locale": "tr-TR"},
     {"code": "ar", "name": "العربية · Arabic", "locale": "ar-SA"},
     {"code": "bn", "name": "বাংলা · Bengali", "locale": "bn-BD"},
     {"code": "zh-CN", "name": "中文 · Chinese", "locale": "zh-CN"},
@@ -51,13 +54,45 @@ LANGUAGES = [
     {"code": "sv", "name": "Svenska · Swedish", "locale": "sv-SE"},
     {"code": "ta", "name": "தமிழ் · Tamil", "locale": "ta-IN"},
     {"code": "th", "name": "ไทย · Thai", "locale": "th-TH"},
-    {"code": "tr", "name": "Türkçe · Turkish", "locale": "tr-TR"},
     {"code": "uk", "name": "Українська · Ukrainian", "locale": "uk-UA"},
     {"code": "ur", "name": "اردو · Urdu", "locale": "ur-PK"},
     {"code": "vi", "name": "Tiếng Việt · Vietnamese", "locale": "vi-VN"},
 ]
 LANGUAGE_CODES = {item["code"] for item in LANGUAGES}
 STATUSES = {"new", "accepted", "preparing", "ready", "served", "cancelled"}
+
+TURKISH_SAFETY_TERMS = {
+    ("tr", "en"): {
+        "alerjim var": ("I have an allergy", ("allergy", "allergic")),
+        "glütensiz": ("gluten-free", ("gluten-free", "without gluten")),
+        "laktozsuz": ("lactose-free", ("lactose-free", "without lactose")),
+        "süt ürünü olmasın": ("no dairy", ("no dairy", "dairy-free", "without dairy")),
+        "fıstık alerjisi": ("peanut allergy", ("peanut allergy", "allergic to peanuts")),
+        "fıstık alerjim var": ("peanut allergy", ("peanut allergy", "allergic to peanuts")),
+        "fıstığa alerjim var": ("peanut allergy", ("peanut allergy", "allergic to peanuts")),
+        "kuruyemiş alerjisi": ("nut allergy", ("nut allergy", "allergic to nuts")),
+        "kuruyemişe alerjim var": ("nut allergy", ("nut allergy", "allergic to nuts")),
+        "domuz eti olmasın": ("no pork", ("no pork", "without pork")),
+        "soğansız": ("no onion", ("no onion", "without onion", "onion-free")),
+        "sarımsaksız": ("no garlic", ("no garlic", "without garlic", "garlic-free")),
+        "acısız": ("not spicy", ("not spicy", "non-spicy", "without spice")),
+    },
+    ("en", "tr"): {
+        "i have an allergy": ("alerjim var", ("alerjim var", "alerjim bulunuyor")),
+        "gluten-free": ("glütensiz", ("glütensiz", "glutensiz")),
+        "lactose-free": ("laktozsuz", ("laktozsuz",)),
+        "no dairy": ("süt ürünü olmasın", ("süt ürünü olmasın", "süt ürünsüz")),
+        "peanut allergy": (
+            "fıstık alerjisi",
+            ("fıstık alerjisi", "fıstığa alerjim var", "yer fıstığına alerjim var"),
+        ),
+        "nut allergy": ("kuruyemiş alerjisi", ("kuruyemiş alerjisi",)),
+        "no pork": ("domuz eti olmasın", ("domuz eti olmasın", "domuz etsiz")),
+        "no onion": ("soğansız", ("soğansız", "soğan olmasın")),
+        "no garlic": ("sarımsaksız", ("sarımsaksız", "sarımsak olmasın")),
+        "not spicy": ("acısız", ("acısız", "acı olmasın", "baharatlı değil")),
+    },
+}
 
 
 def utc_now() -> str:
@@ -101,17 +136,82 @@ def initialise_database() -> None:
         )
 
 
+def normalise_translation_input(text: str, source: str) -> str:
+    normalised = unicodedata.normalize("NFC", text).replace("’", "'").replace("`", "'")
+    normalised = " ".join(normalised.split())
+    if source == "tr":
+        # Preserve dotted/dotless Turkish characters instead of ASCII-folding them.
+        normalised = normalised.replace("İ", "İ")
+    return normalised
+
+
+def preserve_turkish_safety_terms(
+    source_text: str, translated_text: str, source: str, target: str
+) -> str:
+    terms = TURKISH_SAFETY_TERMS.get((source, target), {})
+    source_lower = source_text.casefold()
+    translated_lower = translated_text.casefold()
+    missing: list[str] = []
+    for phrase, (canonical, accepted) in terms.items():
+        source_has_phrase = re.search(
+            rf"(?<!\w){re.escape(phrase)}(?!\w)", source_lower, flags=re.UNICODE
+        )
+        translation_has_term = any(
+            re.search(
+                rf"(?<!\w){re.escape(term.casefold())}(?!\w)",
+                translated_lower,
+                flags=re.UNICODE,
+            )
+            for term in accepted
+        )
+        if source_has_phrase and not translation_has_term:
+            missing.append(canonical)
+    if not missing:
+        return translated_text
+    label = "Order note" if target == "en" else "Sipariş notu"
+    return f"{translated_text} — {label}: {', '.join(missing)}"
+
+
+def correct_turkish_restaurant_context(
+    source_text: str, translated_text: str, source: str, target: str
+) -> str:
+    if source == "tr" and target == "en" and "acısız" in source_text.casefold():
+        # Generic translators can read "acı" as pain; on a food order it means spice/heat.
+        translated_text = re.sub(
+            r"\b(?:pain-free|painless)\b",
+            "not spicy",
+            translated_text,
+            flags=re.IGNORECASE,
+        )
+    return translated_text
+
+
 def google_translate(text: str, source: str, target: str) -> str:
     if not text.strip() or source == target:
         return text
     source_code = "auto" if source not in LANGUAGE_CODES else source
+    normalised = normalise_translation_input(text, source)
     try:
-        return GoogleTranslator(source=source_code, target=target).translate(text)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Translation is temporarily unavailable. Please retry.",
-        ) from exc
+        translated = GoogleTranslator(source=source_code, target=target).translate(normalised)
+    except Exception:
+        try:
+            memory_codes = {
+                "en": "en-GB",
+                "tr": "tr-TR",
+            }
+            translated = MyMemoryTranslator(
+                source=memory_codes.get(source, source),
+                target=memory_codes.get(target, target),
+            ).translate(normalised)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Translation is temporarily unavailable. Please retry.",
+            ) from exc
+    if {source, target} == {"en", "tr"}:
+        translated = correct_turkish_restaurant_context(normalised, translated, source, target)
+        translated = preserve_turkish_safety_terms(normalised, translated, source, target)
+    return translated
 
 
 async def translate(text: str, source: str, target: str) -> str:

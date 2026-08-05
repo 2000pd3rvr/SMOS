@@ -15,12 +15,14 @@ SMOS is an AI-assisted ordering layer for restaurants and cafés. Guests can spe
 or type an order in their preferred language, see an AI-generated food visual,
 and send the translated order to a live kitchen/waiter dashboard.
 
-**Current release: v0.1.2**
+**Current release: v0.1.3**
 
 ## Features
 
 - Voice-to-text ordering through the browser Web Speech API
 - Google-backed text translation in 30+ selectable languages
+- Optimised Turkish↔English ordering with Unicode-safe text handling, protected
+  allergy/modifier terms, and a free MyMemory fallback
 - Text-to-speech playback on both guest and staff interfaces
 - Live order delivery with WebSockets
 - Kitchen/waiter workflow: New → Accepted → Preparing → Ready → Served
