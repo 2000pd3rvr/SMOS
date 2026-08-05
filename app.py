@@ -17,9 +17,11 @@ from deep_translator import GoogleTranslator, MyMemoryTranslator
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from langdetect import DetectorFactory, LangDetectException, detect
 from pydantic import BaseModel, Field
 
-VERSION = "0.1.4"
+VERSION = "0.1.5"
+DetectorFactory.seed = 0
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("SMOS_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "smos.db"
@@ -145,6 +147,35 @@ def normalise_translation_input(text: str, source: str) -> str:
     return normalised
 
 
+def infer_source_language(text: str, requested: str = "auto") -> str:
+    if requested in LANGUAGE_CODES:
+        return requested
+    lowered = unicodedata.normalize("NFC", text).casefold()
+    turkish_markers = (
+        "ç",
+        "ğ",
+        "ı",
+        "ö",
+        "ş",
+        "ü",
+        " istiyorum",
+        " olsun",
+        " olmasın",
+        " lütfen",
+    )
+    if any(marker in lowered for marker in turkish_markers):
+        return "tr"
+    try:
+        detected = detect(text)
+        aliases = {"zh-cn": "zh-CN", "zh-tw": "zh-CN"}
+        detected = aliases.get(detected, detected)
+        if detected in LANGUAGE_CODES:
+            return detected
+    except LangDetectException:
+        pass
+    return "auto"
+
+
 def preserve_turkish_safety_terms(
     source_text: str, translated_text: str, source: str, target: str
 ) -> str:
@@ -189,6 +220,7 @@ def correct_turkish_restaurant_context(
 def google_translate(text: str, source: str, target: str) -> str:
     if not text.strip() or source == target:
         return text
+    source = infer_source_language(text, source)
     source_code = "auto" if source not in LANGUAGE_CODES else source
     normalised = normalise_translation_input(text, source)
     try:
@@ -252,9 +284,13 @@ class TranslationRequest(BaseModel):
 
 class OrderCreate(BaseModel):
     customer_name: str = Field(default="Guest", min_length=1, max_length=80)
-    table_number: str = Field(min_length=1, max_length=30)
+    table_number: str = Field(
+        default_factory=lambda: f"AUTO-{uuid.uuid4().hex[:6].upper()}",
+        min_length=1,
+        max_length=30,
+    )
     order_text: str = Field(min_length=2, max_length=1500)
-    language: str = "en"
+    language: str = "auto"
 
 
 class OrderStatusUpdate(BaseModel):
@@ -294,16 +330,18 @@ async def health() -> dict:
 async def translate_text(payload: TranslationRequest) -> dict:
     if payload.target not in LANGUAGE_CODES:
         raise HTTPException(status_code=400, detail="Unsupported target language.")
-    translated = await translate(payload.text, payload.source, payload.target)
-    return {"translated_text": translated, "source": payload.source, "target": payload.target}
+    detected_source = infer_source_language(payload.text, payload.source)
+    translated = await translate(payload.text, detected_source, payload.target)
+    return {"translated_text": translated, "source": detected_source, "target": payload.target}
 
 
 @app.post("/api/orders", status_code=201)
 async def create_order(payload: OrderCreate) -> dict:
-    if payload.language not in LANGUAGE_CODES:
+    if payload.language != "auto" and payload.language not in LANGUAGE_CODES:
         raise HTTPException(status_code=400, detail="Unsupported order language.")
 
-    kitchen_text = await translate(payload.order_text, payload.language, "en")
+    detected_language = infer_source_language(payload.order_text, payload.language)
+    kitchen_text = await translate(payload.order_text, detected_language, "en")
     order_id = str(uuid.uuid4())
     now = utc_now()
     with connect() as db:
@@ -321,7 +359,7 @@ async def create_order(payload: OrderCreate) -> dict:
                 payload.customer_name.strip(),
                 payload.table_number.strip(),
                 payload.order_text.strip(),
-                payload.language,
+                detected_language,
                 kitchen_text,
                 now,
                 now,

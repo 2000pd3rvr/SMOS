@@ -15,11 +15,13 @@ SMOS is an AI-assisted ordering layer for restaurants and cafés. Guests can spe
 or type an order in their preferred language, see an AI-generated food visual,
 and send the translated order to a live kitchen/waiter dashboard.
 
-**Current release: v0.1.4**
+**Current release: v0.1.5**
 
 ## Features
 
 - Voice-to-text ordering through the browser Web Speech API
+- Automatic table identification from table-specific links or QR codes
+- Automatic order-language detection; no guest language selector required
 - Google-backed text translation in 30+ selectable languages
 - Optimised Turkish↔English ordering with Unicode-safe text handling, protected
   allergy/modifier terms, and a free MyMemory fallback
@@ -44,6 +46,15 @@ uvicorn app:app --reload --port 7860
 
 Open <http://localhost:7860>. Use the **Guest** and **Kitchen & waiters** controls
 to switch interfaces.
+
+For table-aware ordering, encode a table-specific URL in each QR/NFC tag:
+
+```text
+https://your-smos-host.example/?table=T-12
+```
+
+SMOS reads and preserves that table ID automatically. Without one, it creates a
+stable `DEMO-xxxxxx` ID for local demonstrations.
 
 ## Docker
 

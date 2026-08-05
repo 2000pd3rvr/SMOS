@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://image.pollinations.ai">
-  <link rel="stylesheet" href="/static/styles.css?v=0.1.4">
+  <link rel="stylesheet" href="/static/styles.css?v=0.1.5">
   <link
     rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Manrope:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap"
@@ -80,22 +80,12 @@
         <div class="container guest-layout">
           <div class="card order-panel accent-border">
             <h2 class="form-title">Your order</h2>
-            <p class="form-hint">Tell us the table, then speak or type the dishes you’d like.</p>
+            <p class="form-hint">Your table is identified automatically. Speak or type naturally in any language.</p>
 
             <form id="order-form" class="reserve-form">
-              <div class="compact-fields">
-                <label>
-                  <span>Your name</span>
-                  <input id="customer-name" maxlength="80" placeholder="e.g. Amara">
-                </label>
-                <label>
-                  <span>Table</span>
-                  <input id="table-number" maxlength="30" placeholder="e.g. 12" required>
-                </label>
-                <label>
-                  <span>I’m speaking</span>
-                  <select id="guest-language" aria-label="Order language"></select>
-                </label>
+              <div class="detected-context" aria-label="Automatically detected order context">
+                <span class="chip chip-static">Table <strong id="detected-table"></strong></span>
+                <span class="chip chip-static">Language auto-detected</span>
               </div>
 
               <div class="order-composer">
@@ -199,7 +189,6 @@
       </div>
       <div class="order-meta">
         <span class="chip chip-static table-value"></span>
-        <span class="chip chip-static customer-value"></span>
       </div>
       <p class="order-copy"></p>
       <details>
@@ -220,6 +209,6 @@
     </article>
   </template>
 
-  <script src="/static/app.js?v=0.1.4" defer></script>
+  <script src="/static/app.js?v=0.1.5" defer></script>
 </body>
 </html>

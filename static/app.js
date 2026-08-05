@@ -7,6 +7,8 @@ const state = {
   imageTimer: null,
   translationTimer: null,
   socket: null,
+  tableId: null,
+  lastDetectedLanguage: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -71,11 +73,9 @@ const elements = {
   themeMeta: $("#meta-theme-color"),
   guestView: $("#guest-view"),
   kitchenView: $("#kitchen-view"),
-  guestLanguage: $("#guest-language"),
   kitchenLanguage: $("#kitchen-language"),
   orderForm: $("#order-form"),
-  customerName: $("#customer-name"),
-  tableNumber: $("#table-number"),
+  detectedTable: $("#detected-table"),
   orderText: $("#order-text"),
   voiceButton: $("#voice-button"),
   voiceLabel: $(".voice-label"),
@@ -124,6 +124,51 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+function inferSourceLanguage(text, requested = "auto") {
+  if (requested !== "auto") return requested;
+  const lowered = text.normalize("NFC").toLowerCase();
+  const turkishMarkers = [
+    "ç",
+    "ğ",
+    "ı",
+    "ö",
+    "ş",
+    "ü",
+    " istiyorum",
+    " olsun",
+    " olmasın",
+    " lütfen",
+  ];
+  return turkishMarkers.some((marker) => lowered.includes(marker)) ? "tr" : "auto";
+}
+
+function browserLanguageCode() {
+  const locale = (navigator.language || "en").toLowerCase();
+  const exact = staticLanguages.find((language) => language.locale.toLowerCase() === locale);
+  if (exact) return exact.code;
+  const base = locale.split("-")[0];
+  return staticLanguages.find((language) => language.code.split("-")[0] === base)?.code || "en";
+}
+
+function resolveTableId() {
+  const params = new URLSearchParams(window.location.search);
+  const supplied = params.get("table") || params.get("table_id");
+  if (supplied) {
+    const safe = supplied.normalize("NFC").replace(/[^\p{L}\p{N}_-]/gu, "").slice(0, 30);
+    if (safe) return safe.toUpperCase();
+  }
+  const storageKey = "smos-generated-table-id";
+  try {
+    const existing = localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const generated = `DEMO-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch {
+    return `DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
+}
+
 function preserveTurkishSafetyTerms(sourceText, translatedText, source, target) {
   const terms = turkishSafetyTerms[`${source}-${target}`] || {};
   const sourceLower = sourceText.toLocaleLowerCase(source === "tr" ? "tr-TR" : "en-GB");
@@ -159,31 +204,45 @@ function correctTurkishRestaurantContext(sourceText, translatedText, source, tar
 }
 
 async function browserGoogleTranslate(text, source, target) {
-  if (!text.trim() || source === target) return text;
+  const effectiveSource = inferSourceLanguage(text, source);
+  state.lastDetectedLanguage = effectiveSource;
+  if (!text.trim() || effectiveSource === target) return text;
   const normalised = text.normalize("NFC").replace(/[’`]/g, "'").replace(/\s+/g, " ").trim();
   const url =
     "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t" +
-    `&sl=${encodeURIComponent(source || "auto")}&tl=${encodeURIComponent(target)}` +
+    `&sl=${encodeURIComponent(effectiveSource)}&tl=${encodeURIComponent(target)}` +
     `&q=${encodeURIComponent(normalised)}`;
   let translated;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error("Google translation failed.");
     const data = await response.json();
+    const detected = data[2];
+    if (typeof detected === "string") {
+      const alias = detected.toLowerCase() === "zh-cn" ? "zh-CN" : detected;
+      if (staticLanguages.some((language) => language.code === alias)) {
+        state.lastDetectedLanguage = alias;
+      }
+    }
     translated = data[0].map((part) => part[0]).join("");
   } catch {
     const memoryUrl =
       "https://api.mymemory.translated.net/get" +
-      `?q=${encodeURIComponent(normalised)}&langpair=${encodeURIComponent(`${source}|${target}`)}`;
+      `?q=${encodeURIComponent(normalised)}&langpair=${encodeURIComponent(
+        `${effectiveSource === "auto" ? browserLanguageCode() : effectiveSource}|${target}`,
+      )}`;
     const response = await fetch(memoryUrl);
     if (!response.ok) throw new Error("Translation is temporarily unavailable.");
     const data = await response.json();
     translated = data.responseData?.translatedText;
     if (!translated) throw new Error("Translation is temporarily unavailable.");
   }
-  if (new Set([source, target]).has("tr") && new Set([source, target]).has("en")) {
-    translated = correctTurkishRestaurantContext(normalised, translated, source, target);
-    return preserveTurkishSafetyTerms(normalised, translated, source, target);
+  if (
+    new Set([effectiveSource, target]).has("tr") &&
+    new Set([effectiveSource, target]).has("en")
+  ) {
+    translated = correctTurkishRestaurantContext(normalised, translated, effectiveSource, target);
+    return preserveTurkishSafetyTerms(normalised, translated, effectiveSource, target);
   }
   return translated;
 }
@@ -199,14 +258,15 @@ function saveLocalOrders(orders) {
 
 async function localApi(path, options = {}) {
   if (path === "/api/config") {
-    return { name: "SMOS", version: "0.1.4", languages: staticLanguages };
+    return { name: "SMOS", version: "0.1.5", languages: staticLanguages };
   }
 
   if (path === "/api/translate") {
     const body = JSON.parse(options.body);
+    const translatedText = await browserGoogleTranslate(body.text, body.source, body.target);
     return {
-      translated_text: await browserGoogleTranslate(body.text, body.source, body.target),
-      source: body.source,
+      translated_text: translatedText,
+      source: state.lastDetectedLanguage || body.source,
       target: body.target,
     };
   }
@@ -230,15 +290,17 @@ async function localApi(path, options = {}) {
   if (path === "/api/orders" && options.method === "POST") {
     const body = JSON.parse(options.body);
     const orders = localOrders();
-    const english = await browserGoogleTranslate(body.order_text, body.language, "en");
+    const inferredLanguage = inferSourceLanguage(body.order_text, body.language);
+    const english = await browserGoogleTranslate(body.order_text, inferredLanguage, "en");
+    const detectedLanguage = state.lastDetectedLanguage || inferredLanguage;
     const now = new Date().toISOString();
     const order = {
       id: crypto.randomUUID(),
       order_number: Math.max(100, ...orders.map((item) => item.order_number)) + 1,
-      customer_name: body.customer_name,
+      customer_name: body.customer_name || "Guest",
       table_number: body.table_number,
       original_text: body.order_text,
-      original_language: body.language,
+      original_language: detectedLanguage,
       kitchen_text: english,
       display_text: english,
       status: "new",
@@ -319,7 +381,9 @@ function switchView(view) {
   elements.guestView.classList.toggle("is-active", view === "guest");
   elements.kitchenView.classList.toggle("is-active", view === "kitchen");
   if (view === "kitchen") loadOrders();
-  window.history.replaceState(null, "", view === "kitchen" ? "#kitchen" : "#order");
+  const url = new URL(window.location.href);
+  url.hash = view === "kitchen" ? "kitchen" : "order";
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 const THEME_KEY = "smos-theme";
@@ -406,7 +470,7 @@ function toggleListening() {
     state.recognition.stop();
     return;
   }
-  state.recognition.lang = selectedLocale(elements.guestLanguage);
+  state.recognition.lang = navigator.language || "en-GB";
   try {
     state.recognition.start();
   } catch {
@@ -416,7 +480,7 @@ function toggleListening() {
 
 async function previewTranslation() {
   const text = elements.orderText.value.trim();
-  const source = elements.guestLanguage.value;
+  const source = "auto";
   if (text.length < 2) {
     elements.translationCard.classList.add("hidden");
     return "";
@@ -448,9 +512,7 @@ async function visualiseDish() {
   elements.previewButton.disabled = true;
   try {
     const result = await api(
-      `/api/image?description=${encodeURIComponent(description)}&language=${encodeURIComponent(
-        elements.guestLanguage.value,
-      )}`,
+      `/api/image?description=${encodeURIComponent(description)}&language=auto`,
     );
     elements.dishImage.onload = () => {
       elements.imageLoading.classList.add("hidden");
@@ -480,10 +542,10 @@ async function submitOrder(event) {
     const order = await api("/api/orders", {
       method: "POST",
       body: JSON.stringify({
-        customer_name: elements.customerName.value.trim() || "Guest",
-        table_number: elements.tableNumber.value.trim(),
+        customer_name: "Guest",
+        table_number: state.tableId,
         order_text: elements.orderText.value.trim(),
-        language: elements.guestLanguage.value,
+        language: "auto",
       }),
     });
     showMessage(`Order #${order.order_number} is with the kitchen.`, "success");
@@ -527,7 +589,6 @@ function renderOrders() {
     $(".status-pill", card).textContent = statusLabels[order.status];
     $(".status-pill", card).dataset.status = order.status;
     $(".table-value", card).textContent = `Table ${order.table_number}`;
-    $(".customer-value", card).textContent = order.customer_name;
     $(".order-copy", card).textContent = order.display_text || order.kitchen_text;
     $(".original-copy", card).textContent = order.original_text;
     const statusSelect = $(".status-select", card);
@@ -602,7 +663,8 @@ function connectSocket() {
 async function initialise() {
   state.config = await api("/api/config");
   elements.version.textContent = `v${state.config.version}`;
-  fillLanguageSelect(elements.guestLanguage, "en");
+  state.tableId = resolveTableId();
+  elements.detectedTable.textContent = state.tableId;
   fillLanguageSelect(elements.kitchenLanguage, "en");
   setupTheme();
   setupSpeechRecognition();
@@ -620,10 +682,6 @@ async function initialise() {
   );
   elements.kitchenLanguage.addEventListener("change", loadOrders);
   elements.includeClosed.addEventListener("change", loadOrders);
-  elements.guestLanguage.addEventListener("change", () => {
-    if (state.listening) state.recognition.stop();
-    previewTranslation();
-  });
   elements.orderText.addEventListener("input", () => {
     clearTimeout(state.translationTimer);
     clearTimeout(state.imageTimer);
