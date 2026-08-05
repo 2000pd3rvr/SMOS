@@ -1,6 +1,7 @@
 const state = {
   config: null,
   orders: [],
+  localMode: false,
   recognition: null,
   listening: false,
   imageTimer: null,
@@ -10,6 +11,25 @@ const state = {
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+const staticLanguages = [
+  ["en", "English", "en-GB"], ["ar", "العربية · Arabic", "ar-SA"],
+  ["bn", "বাংলা · Bengali", "bn-BD"], ["zh-CN", "中文 · Chinese", "zh-CN"],
+  ["cs", "Čeština · Czech", "cs-CZ"], ["da", "Dansk · Danish", "da-DK"],
+  ["nl", "Nederlands · Dutch", "nl-NL"], ["fi", "Suomi · Finnish", "fi-FI"],
+  ["fr", "Français · French", "fr-FR"], ["de", "Deutsch · German", "de-DE"],
+  ["el", "Ελληνικά · Greek", "el-GR"], ["hi", "हिन्दी · Hindi", "hi-IN"],
+  ["hu", "Magyar · Hungarian", "hu-HU"], ["id", "Bahasa Indonesia", "id-ID"],
+  ["it", "Italiano · Italian", "it-IT"], ["ja", "日本語 · Japanese", "ja-JP"],
+  ["ko", "한국어 · Korean", "ko-KR"], ["ms", "Bahasa Melayu · Malay", "ms-MY"],
+  ["no", "Norsk · Norwegian", "nb-NO"], ["pl", "Polski · Polish", "pl-PL"],
+  ["pt", "Português · Portuguese", "pt-PT"], ["ro", "Română · Romanian", "ro-RO"],
+  ["ru", "Русский · Russian", "ru-RU"], ["es", "Español · Spanish", "es-ES"],
+  ["sw", "Kiswahili · Swahili", "sw-KE"], ["sv", "Svenska · Swedish", "sv-SE"],
+  ["ta", "தமிழ் · Tamil", "ta-IN"], ["th", "ไทย · Thai", "th-TH"],
+  ["tr", "Türkçe · Turkish", "tr-TR"], ["uk", "Українська · Ukrainian", "uk-UA"],
+  ["ur", "اردو · Urdu", "ur-PK"], ["vi", "Tiếng Việt · Vietnamese", "vi-VN"],
+].map(([code, name, locale]) => ({ code, name, locale }));
 
 const elements = {
   modeButtons: $$(".mode-button"),
@@ -45,15 +65,133 @@ const elements = {
 };
 
 async function api(path, options = {}) {
+  if (state.localMode) return localApi(path, options);
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
+  if (
+    path === "/api/config" &&
+    !response.headers.get("content-type")?.includes("application/json")
+  ) {
+    state.localMode = true;
+    return localApi(path, options);
+  }
   if (!response.ok) {
+    if (path === "/api/config" && response.status === 404) {
+      state.localMode = true;
+      return localApi(path, options);
+    }
     const body = await response.json().catch(() => ({}));
     throw new Error(body.detail || `Request failed (${response.status})`);
   }
   return response.json();
+}
+
+async function browserGoogleTranslate(text, source, target) {
+  if (!text.trim() || source === target) return text;
+  const url =
+    "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t" +
+    `&sl=${encodeURIComponent(source || "auto")}&tl=${encodeURIComponent(target)}` +
+    `&q=${encodeURIComponent(text)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Translation is temporarily unavailable.");
+  const data = await response.json();
+  return data[0].map((part) => part[0]).join("");
+}
+
+function localOrders() {
+  return JSON.parse(localStorage.getItem("smos-orders") || "[]");
+}
+
+function saveLocalOrders(orders) {
+  localStorage.setItem("smos-orders", JSON.stringify(orders));
+  window.dispatchEvent(new CustomEvent("smos-orders-changed"));
+}
+
+async function localApi(path, options = {}) {
+  if (path === "/api/config") {
+    return { name: "SMOS", version: "0.1.1", languages: staticLanguages };
+  }
+
+  if (path === "/api/translate") {
+    const body = JSON.parse(options.body);
+    return {
+      translated_text: await browserGoogleTranslate(body.text, body.source, body.target),
+      source: body.source,
+      target: body.target,
+    };
+  }
+
+  if (path.startsWith("/api/image")) {
+    const params = new URL(path, window.location.origin).searchParams;
+    const description = params.get("description");
+    const language = params.get("language") || "en";
+    const english =
+      language === "en" ? description : await browserGoogleTranslate(description, language, "en");
+    const prompt =
+      `professional appetizing restaurant food photography, plated dish, ${english}, ` +
+      "warm natural light, realistic, no text, no logo";
+    return {
+      url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+        "?width=768&height=512&nologo=true&enhance=true",
+      prompt: english,
+    };
+  }
+
+  if (path === "/api/orders" && options.method === "POST") {
+    const body = JSON.parse(options.body);
+    const orders = localOrders();
+    const english = await browserGoogleTranslate(body.order_text, body.language, "en");
+    const now = new Date().toISOString();
+    const order = {
+      id: crypto.randomUUID(),
+      order_number: Math.max(100, ...orders.map((item) => item.order_number)) + 1,
+      customer_name: body.customer_name,
+      table_number: body.table_number,
+      original_text: body.order_text,
+      original_language: body.language,
+      kitchen_text: english,
+      display_text: english,
+      status: "new",
+      created_at: now,
+      updated_at: now,
+    };
+    saveLocalOrders([order, ...orders]);
+    return order;
+  }
+
+  if (path.startsWith("/api/orders?")) {
+    const params = new URL(path, window.location.origin).searchParams;
+    const language = params.get("language") || "en";
+    const includeClosed = params.get("include_closed") === "true";
+    const orders = localOrders().filter(
+      (order) => includeClosed || !["served", "cancelled"].includes(order.status),
+    );
+    return Promise.all(
+      orders.map(async (order) => ({
+        ...order,
+        display_text:
+          language === "en"
+            ? order.kitchen_text
+            : await browserGoogleTranslate(order.kitchen_text, "en", language),
+      })),
+    );
+  }
+
+  if (path.startsWith("/api/orders/") && options.method === "PATCH") {
+    const id = path.split("/").pop();
+    const { status } = JSON.parse(options.body);
+    const orders = localOrders();
+    const order = orders.find((item) => item.id === id);
+    if (!order) throw new Error("Order not found.");
+    order.status = status;
+    order.updated_at = new Date().toISOString();
+    saveLocalOrders(orders);
+    return order;
+  }
+
+  throw new Error("This action is unavailable in static demo mode.");
 }
 
 function fillLanguageSelect(select, preferred = "en") {
@@ -323,6 +461,12 @@ async function updateStatus(orderId, status) {
 }
 
 function connectSocket() {
+  if (state.localMode) {
+    elements.connection.innerHTML = "<i></i> Live demo";
+    window.addEventListener("storage", loadOrders);
+    window.addEventListener("smos-orders-changed", loadOrders);
+    return;
+  }
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   state.socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
   state.socket.onopen = () => {
