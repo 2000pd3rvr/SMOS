@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta id="meta-theme-color" name="theme-color" content="#070707">
+  <script>
+    (function () {
+      try {
+        var k = "smos-theme";
+        var t = localStorage.getItem(k);
+        var th = t === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", th);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", th === "light" ? "#f6f3ee" : "#070707");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <title>SMOS | Smart Food Ordering System · Voice ordering in any language</title>
+  <meta name="description" content="SMOS takes spoken or typed food orders in any language, translates them for the kitchen, and delivers them live to waiters and chefs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://image.pollinations.ai">
+  <link rel="stylesheet" href="/static/styles.css?v=0.1.5">
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Manrope:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap"
+    media="print"
+    onload="this.media='all';this.onload=null">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Manrope:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap">
+  </noscript>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="#order" aria-label="SMOS home">
+        <span class="brand-wordmark" aria-hidden="true">Smos</span>
+        <span class="brand-sr-only">SMOS</span>
+      </a>
+      <nav class="nav nav-desktop" aria-label="Choose interface">
+        <button type="button" class="tab-btn is-active" data-view="guest">Guest</button>
+        <button type="button" class="tab-btn" data-view="kitchen">
+          Kitchen &amp; waiters
+          <b id="new-count" class="count-badge hidden">0</b>
+        </button>
+      </nav>
+      <div class="nav-actions">
+        <span id="connection" class="open-now-chip" role="status"><i></i> Live</span>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme" title="Theme">
+          <svg class="theme-icon theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+          <svg class="theme-icon theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="order">
+    <section id="guest-view" class="view is-active">
+      <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="container hero-content">
+          <p class="eyebrow">Table-side ordering · No app needed</p>
+          <h1>Say what you’re <span class="hero-brand">in the mood for</span>.</h1>
+          <p class="hero-subtext">
+            Speak or type naturally in your language. SMOS translates your order for the
+            kitchen while keeping your own words on the ticket.
+          </p>
+        </div>
+      </section>
+
+      <section class="section section-dark">
+        <div class="container guest-layout">
+          <div class="card order-panel accent-border">
+            <h2 class="form-title">Your order</h2>
+            <p class="form-hint">Your table is identified automatically. Speak or type naturally in any language.</p>
+
+            <form id="order-form" class="reserve-form">
+              <div class="detected-context" aria-label="Automatically detected order context">
+                <span class="chip chip-static">Table <strong id="detected-table"></strong></span>
+                <span class="chip chip-static">Language auto-detected</span>
+              </div>
+
+              <div class="order-composer">
+                <label for="order-text">Describe your order</label>
+                <textarea id="order-text" rows="5" maxlength="1500"
+                  placeholder="I’d like grilled salmon with lemon rice, no dairy…" required></textarea>
+                <div class="composer-actions">
+                  <button id="voice-button" class="btn btn-small voice-button" type="button">
+                    <span class="mic" aria-hidden="true"></span>
+                    <span class="voice-label">Tap to speak</span>
+                  </button>
+                  <span id="listening-status" class="listening-status"></span>
+                  <button id="preview-button" class="btn btn-outline btn-small" type="button">Visualise dish</button>
+                </div>
+              </div>
+
+              <div id="translation-card" class="translation-card hidden">
+                <div class="translation-card__head">
+                  <span class="eyebrow">Kitchen translation</span>
+                  <button id="speak-translation" type="button" class="link-btn" aria-label="Read translation aloud">◖)) Listen</button>
+                </div>
+                <p id="translated-preview"></p>
+              </div>
+
+              <div id="form-message" class="form-message hidden" role="status"></div>
+              <button id="submit-order" class="btn btn-block" type="submit">
+                <span>Send order to kitchen</span><b>→</b>
+              </button>
+            </form>
+          </div>
+
+          <aside class="visual-panel">
+            <div class="visual-frame">
+              <img id="dish-image" alt="AI-generated preview of the described dish">
+              <div id="image-placeholder" class="image-placeholder">
+                <div class="plate" aria-hidden="true"><i></i></div>
+                <h2>Your idea, plated.</h2>
+                <p>Describe a dish and SMOS will visualise it here.</p>
+              </div>
+              <div id="image-loading" class="image-loading hidden"><i></i><span>Imagining your dish…</span></div>
+              <span class="frame-label">AI food visualisation</span>
+            </div>
+            <div class="chips-row">
+              <span class="chip chip-static">Google-powered translation</span>
+              <span class="chip chip-static">Optimised Turkish ↔ English</span>
+              <span class="chip chip-static">Live kitchen delivery</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </section>
+
+    <section id="kitchen-view" class="view">
+      <section class="section">
+        <div class="container">
+          <div class="dashboard-header">
+            <div>
+              <p class="eyebrow">Live service dashboard</p>
+              <h2 class="dashboard-title">Kitchen pass</h2>
+              <p class="section-lede">New guest orders arrive here instantly, in your chosen language.</p>
+            </div>
+            <div class="dashboard-controls">
+              <label>
+                <span>Display orders in</span>
+                <select id="kitchen-language"></select>
+              </label>
+              <label class="closed-toggle">
+                <input id="include-closed" type="checkbox" checked>
+                <span>Show completed</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="status-summary" id="status-summary"></div>
+          <div id="orders-grid" class="orders-grid"></div>
+          <div id="empty-orders" class="empty-orders hidden">
+            <span aria-hidden="true">✓</span>
+            <h3>The pass is clear</h3>
+            <p>New orders will appear here automatically.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-wrap">
+      <span>SMOS <b id="version"></b> · Smart Food Ordering System</span>
+      <span>Voice availability depends on browser support. Please confirm allergies with staff.</span>
+    </div>
+  </footer>
+
+  <template id="order-template">
+    <article class="order-card card">
+      <div class="order-card-head">
+        <div>
+          <span class="order-number"></span>
+          <time></time>
+        </div>
+        <span class="status-pill"></span>
+      </div>
+      <div class="order-meta">
+        <span class="chip chip-static table-value"></span>
+      </div>
+      <p class="order-copy"></p>
+      <details>
+        <summary>Original guest wording</summary>
+        <p class="original-copy"></p>
+      </details>
+      <div class="order-actions">
+        <button class="link-btn speak-order" type="button">◖)) Listen</button>
+        <select class="status-select" aria-label="Update order status">
+          <option value="new">New</option>
+          <option value="accepted">Accepted</option>
+          <option value="preparing">Preparing</option>
+          <option value="ready">Ready</option>
+          <option value="served">Served</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js?v=0.1.5" defer></script>
+</body>
+</html>
