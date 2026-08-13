@@ -41,4 +41,5 @@ else:
         about_title="About SMOS",
         about_md=ABOUT,
         site_root=ROOT,
+        asset_cdn="https://cdn.jsdelivr.net/gh/2000pd3rvr/SMOS@main",
     )
