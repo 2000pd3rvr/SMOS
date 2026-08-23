@@ -89,7 +89,7 @@ Food images are illustrative and may not match the kitchen's final presentation.
 SMOS uses semantic versions. Every subsequent deployment must increment the
 version in `app.py` and this README (for example `v0.1.1`, then `v0.1.2`) and
 receive a matching Git tag.
-## Research profiles
+## Profiles
 
 - **WordPress:** https://deborahakuokominka.wordpress.com/
 - **about.me:** https://about.me/deborah_akuoko_minka_ama
