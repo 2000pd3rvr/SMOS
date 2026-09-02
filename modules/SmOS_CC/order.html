@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta id="meta-theme-color" name="theme-color" content="#070707">
+  <script>
+    (function () {
+      try {
+        var k = "corner-cafe-theme";
+        var t = localStorage.getItem(k);
+        var th = t === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", th);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", th === "light" ? "#f6f3ee" : "#070707");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <title>Corner Cafe | Order</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-c.svg?v=1.17">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css?v=6">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="app-back" data-back-path href="path.html">← Change path</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme" title="Theme">
+        <svg class="theme-icon theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="app-main">
+      <div class="app-hero">
+        <p class="app-hero__eyebrow"><span data-order-service>Order</span> · <span data-order-mode>…</span></p>
+        <h1 class="app-hero__title" data-order-heading>Your order</h1>
+        <p class="app-hero__lead" data-order-lead>Choose dishes for your order.</p>
+      </div>
+
+      <section class="order-panel" data-panel-menu hidden>
+        <div class="menu-filters" data-menu-filters role="tablist" aria-label="Menu sections"></div>
+        <div class="menu-list" data-menu-list></div>
+      </section>
+
+      <section class="order-panel" data-panel-know hidden>
+        <form class="know-form" data-know-form>
+          <label class="know-label" for="know-input">What would you like?</label>
+          <textarea
+            id="know-input"
+            class="know-input"
+            name="want"
+            rows="3"
+            placeholder="e.g. a full Scottish and a flat white, or Cullen skink and sticky toffee"
+            autocomplete="off"
+            required></textarea>
+          <button type="submit" class="know-submit">Match my order</button>
+        </form>
+        <div class="know-results" data-know-results hidden></div>
+      </section>
+
+      <aside class="cart-bar" data-cart-bar hidden>
+        <div class="cart-bar__copy">
+          <strong data-cart-count>0 items</strong>
+          <span data-cart-total>£0.00</span>
+        </div>
+        <div class="cart-bar__actions">
+          <button type="button" class="cart-bar__btn cart-bar__btn--ghost" data-cart-review>View basket</button>
+          <button type="button" class="cart-bar__btn" data-cart-checkout>Continue to checkout</button>
+        </div>
+      </aside>
+
+      <dialog class="cart-dialog" data-cart-dialog>
+        <form method="dialog" class="cart-dialog__inner">
+          <h2 class="cart-dialog__title">Your basket</h2>
+          <ul class="cart-lines" data-cart-lines></ul>
+          <p class="cart-dialog__total">Total <strong data-cart-dialog-total>£0.00</strong></p>
+          <div class="cart-dialog__actions">
+            <button type="submit" class="cart-dialog__close" value="close">Close</button>
+            <button type="button" class="cart-dialog__clear" data-cart-clear>Clear basket</button>
+            <button type="button" class="cart-dialog__checkout" data-cart-checkout>Continue to checkout</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </div>
+  <script src="menu-data.js?v=2" defer></script>
+  <script src="app.js?v=5" defer></script>
+</body>
+</html>

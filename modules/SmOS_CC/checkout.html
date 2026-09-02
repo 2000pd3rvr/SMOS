@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta id="meta-theme-color" name="theme-color" content="#070707">
+  <script>
+    (function () {
+      try {
+        var k = "corner-cafe-theme";
+        var t = localStorage.getItem(k);
+        var th = t === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", th);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", th === "light" ? "#f6f3ee" : "#070707");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <title>Corner Cafe | Checkout</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-c.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css?v=6">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="app-back" data-back-order href="order.html">← Back to order</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme" title="Theme">
+        <svg class="theme-icon theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="app-main" data-checkout>
+      <div class="app-hero">
+        <p class="app-hero__eyebrow"><span data-order-service>Order</span> · Checkout</p>
+        <h1 class="app-hero__title">Checkout</h1>
+        <p class="app-hero__lead">Pay the cafe directly — no marketplace commission on this order.</p>
+      </div>
+
+      <section class="checkout-block" data-checkout-hide-on-done>
+        <h2 class="checkout-heading">Order summary</h2>
+        <ul class="checkout-lines" data-checkout-lines></ul>
+        <p class="checkout-total">Total <strong data-checkout-total>£0.00</strong></p>
+        <p class="checkout-ref">Payment reference <strong data-checkout-ref>—</strong></p>
+      </section>
+
+      <section class="checkout-block" data-checkout-hide-on-done>
+        <h2 class="checkout-heading">Pay the business directly</h2>
+        <p class="checkout-intro">
+          These options settle to The Corner Cafe’s own account or till. No Just Eat / Foodhub-style order commission.
+        </p>
+        <div class="pay-options" data-pay-options role="radiogroup" aria-label="Payment method"></div>
+        <div class="pay-detail" data-pay-detail hidden></div>
+      </section>
+
+      <section class="checkout-block" data-checkout-details data-checkout-hide-on-done>
+        <h2 class="checkout-heading">Your details</h2>
+        <form class="checkout-form" data-checkout-form>
+          <label class="checkout-field">
+            <span>Name</span>
+            <input type="text" name="name" required autocomplete="name">
+          </label>
+          <label class="checkout-field">
+            <span>Phone</span>
+            <input type="tel" name="phone" required autocomplete="tel">
+          </label>
+          <label class="checkout-field" data-field-address hidden>
+            <span>Delivery address</span>
+            <textarea name="address" rows="2" autocomplete="street-address"></textarea>
+          </label>
+          <label class="checkout-field">
+            <span>Notes (optional)</span>
+            <textarea name="notes" rows="2" placeholder="Allergies, table number, doorbell…"></textarea>
+          </label>
+          <button type="submit" class="checkout-submit" data-place-order disabled>Place order</button>
+        </form>
+      </section>
+
+      <section class="checkout-done" data-checkout-done hidden>
+        <h2 class="checkout-heading">Order placed</h2>
+        <p class="checkout-done__lead" data-done-lead></p>
+        <div class="pay-detail pay-detail--done" data-done-pay></div>
+        <a class="checkout-submit checkout-submit--link" href="./">Back to start</a>
+      </section>
+    </main>
+  </div>
+  <script src="payments-config.js?v=1" defer></script>
+  <script src="app.js?v=5" defer></script>
+</body>
+</html>

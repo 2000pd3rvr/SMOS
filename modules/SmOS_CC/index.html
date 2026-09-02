@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta id="meta-theme-color" name="theme-color" content="#070707">
+  <script>
+    (function () {
+      try {
+        var k = "corner-cafe-theme";
+        var t = localStorage.getItem(k);
+        var th = t === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", th);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", th === "light" ? "#f6f3ee" : "#070707");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <title>Corner Cafe | Order online</title>
+  <meta name="description" content="Order from The Corner Cafe, Dalkeith — delivery, collection or sitting in.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo-c.svg?v=1.17">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css?v=4">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="app-brand" href="../../index.html" title="SmOS home">
+        <img src="assets/logo-c.svg" alt="" width="36" height="36" decoding="async">
+        <span>SmOS_CC · Corner Cafe</span>
+      </a>
+      <div>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch theme" title="Theme">
+          <svg class="theme-icon theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+          <svg class="theme-icon theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="app-hero">
+        <img class="app-hero__logo" src="assets/logo-c.svg?v=1.17" alt="Corner Cafe" width="88" height="88" decoding="async">
+        <h1 class="app-hero__title">How would you like your order?</h1>
+        <p class="app-hero__lead">Choose delivery, collection or sitting in to continue.</p>
+      </div>
+
+      <ul class="service-grid">
+        <li>
+          <a class="service-card service-card--delivery" href="path.html?service=delivery">
+            <span class="service-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 17h4"/>
+                <path d="M3 7h13v8a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3V9.5L17 4H3z"/>
+                <path d="M3 7l2-3h8l2 3"/>
+                <circle cx="7.5" cy="17.5" r="1.5"/>
+                <circle cx="17.5" cy="17.5" r="1.5"/>
+              </svg>
+            </span>
+            <span class="service-card__copy">
+              <span class="service-card__name">Delivery</span>
+              <span class="service-card__meta">To your door in Dalkeith &amp; nearby</span>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a class="service-card service-card--collection" href="path.html?service=collection">
+            <span class="service-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                <path d="M3 6h18"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </span>
+            <span class="service-card__copy">
+              <span class="service-card__name">Collection</span>
+              <span class="service-card__meta">Pick up at 9 Eskdail Court</span>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a class="service-card service-card--sitting-in" href="path.html?service=sitting-in">
+            <span class="service-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/>
+                <path d="M4 15h16"/>
+                <path d="M8 11h8"/>
+                <path d="M8 7h8"/>
+              </svg>
+            </span>
+            <span class="service-card__copy">
+              <span class="service-card__name">Sitting in</span>
+              <span class="service-card__meta">Order at your table in the cafe</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+
+      <p class="app-note">Online order cut-off <strong>30 minutes before close</strong> (17:30).</p>
+    </main>
+  </div>
+  <script src="app.js?v=4" defer></script>
+</body>
+</html>

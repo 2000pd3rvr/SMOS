@@ -307,14 +307,32 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="SMOS · Smart Food Ordering System", version=VERSION, lifespan=lifespan)
+app = FastAPI(title="SmOS · AI powered online ordering", version=VERSION, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+app.mount("/modules", StaticFiles(directory=ROOT / "modules", html=True), name="modules")
 
 
 @app.get("/")
 async def home() -> FileResponse:
+    platform = ROOT / "index.html"
+    if platform.exists():
+        return FileResponse(platform)
     return FileResponse(ROOT / "static" / "index.html")
 
+
+@app.get("/styles.css")
+async def platform_styles() -> FileResponse:
+    return FileResponse(ROOT / "styles.css")
+
+
+@app.get("/site.js")
+async def platform_site_js() -> FileResponse:
+    return FileResponse(ROOT / "site.js")
+
+
+@app.get("/guest")
+async def legacy_guest() -> FileResponse:
+    return FileResponse(ROOT / "static" / "index.html")
 
 @app.get("/api/config")
 async def config() -> dict:

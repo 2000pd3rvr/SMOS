@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="SmOS — AI powered online ordering system, customisable for restaurants and other merchants.">
+  <title>SmOS · AI powered online ordering</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="logo" href="index.html">SmOS</a>
+    <nav class="site-nav" aria-label="Primary">
+      <details class="nav-modules">
+        <summary>Explore modules</summary>
+        <ul>
+          <li>
+            <a href="modules/SmOS_CC/">
+              <span class="mod-id">SmOS_CC</span>
+              <span class="mod-name">Corner Cafe</span>
+            </a>
+          </li>
+        </ul>
+      </details>
+      <a href="#what">What it does</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Restaurant &amp; merchant tech</p>
+      <h1>AI powered online ordering,<br><em>built per merchant.</em></h1>
+      <p class="lede">
+        SmOS is a customisable ordering system for restaurants and other merchants.
+        One platform core. Merchant modules that own branding, menu, fulfilment, and how guests place orders.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="modules/SmOS_CC/">Open SmOS_CC</a>
+        <a class="btn btn-ghost" href="#modules">Explore modules</a>
+      </div>
+    </section>
+
+    <section id="what" class="section">
+      <h2>What SmOS does</h2>
+      <div class="feature-grid">
+        <article>
+          <h3>Service modes</h3>
+          <p>Delivery, collection, or sitting in — each merchant module configures what guests can choose.</p>
+        </article>
+        <article>
+          <h3>Two ways to order</h3>
+          <p>Browse a structured menu, or say what you want in plain language. SmOS matches dishes to the kitchen list.</p>
+        </article>
+        <article>
+          <h3>Merchant modules</h3>
+          <p>Every venue gets a named customisation (e.g. SmOS_CC) with its own menu, copy, and fulfilment rules — without bloating the public website.</p>
+        </article>
+        <article>
+          <h3>Extensible core</h3>
+          <p>Shared platform chrome and APIs; voice, kitchen dashboards, and payments plug in as the stack grows.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="modules" class="section">
+      <h2>Explore modules</h2>
+      <p class="section-lead">Merchant-specific customisations of the SmOS system.</p>
+      <ul class="module-list">
+        <li>
+          <a class="module-card" href="modules/SmOS_CC/">
+            <span class="module-card__id">SmOS_CC</span>
+            <span class="module-card__title">The Corner Cafe</span>
+            <span class="module-card__meta">Dalkeith · delivery, collection, sit-in · menu + AI match</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>SmOS</span>
+    <span class="muted">AI powered online ordering · customisable for merchants</span>
+  </footer>
+
+  <script src="site.js" defer></script>
+</body>
+</html>
